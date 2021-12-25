@@ -6,7 +6,6 @@
 
 #include <Preferences.h>
 
-
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
 
@@ -14,25 +13,13 @@ extern "C" {
     #include "multiboot.h"
 }
 
-// #include <multiboot.h>
-
 Preferences preferences;
 
 uint8_t *data;
 size_t data_len = 0;
 
 WiFiClient wiFiClient;
-// HTTPClient http;
 WiFiManager	wifiManager;
-
-uint8_t *gif_ptr;
-uint8_t use_irc = 1;
-
-WiFiClientSecure* https_client;
-HTTPClient https;
-
-
-// void multiboot(uint8_t* data, uint32_t len);
 
 void File_Upload() {
 	String webpage = "";
@@ -128,9 +115,6 @@ void setup() {
 		ESP.restart();
 	Serial.print("IP: "); Serial.println(WiFi.localIP());
 
-	// http.setReuse(true);
-	https_client = new WiFiClientSecure;
-
 	Serial.print("Setup task running on: ");
 	Serial.println(xPortGetCoreID());
 }
@@ -139,5 +123,5 @@ unsigned long next_frame = 0;
 
 void loop() {
 	wifiManager.process();
-	vTaskDelay(1 / portTICK_PERIOD_MS);
+	vTaskDelay(10 / portTICK_PERIOD_MS);
 }
