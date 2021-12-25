@@ -9,11 +9,14 @@
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
 
+#include "FS.h"
+#include "SPIFFS.h"
+#define FORMAT_SPIFFS_IF_FAILED true
+
+
 extern "C" {
     #include "multiboot.h"
 }
-
-Preferences preferences;
 
 uint8_t *data;
 size_t data_len = 0;
@@ -91,15 +94,12 @@ void setup() {
 	wifiManager.setConfigPortalTimeout(180); // try for 3 minute
 	wifiManager.setMinimumSignalQuality(15);
 	wifiManager.setRemoveDuplicateAPs(true);
-	// wifiManager.setSaveParamsCallback(setSaveParamsCallback);
 
 	wifiManager.setClass("invert"); // dark theme
 
 	std::vector<const char*> menu = {"wifi", "info", "sep", "update", "restart" };
 	wifiManager.setMenu(menu);
 
-	// wifiManager.setParamsPage(true);
-	wifiManager.setCountry("JP");
 	wifiManager.setHostname("gba_wifi");
 
 	bool rest = wifiManager.autoConnect("GBA_AP");
