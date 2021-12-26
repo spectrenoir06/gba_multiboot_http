@@ -1,9 +1,5 @@
-//
-// Created by Shyri on 2019-09-12.
-//
-
-#ifndef GBA_BT_HID_FW_SP32_MULTIBOOT_H
-#define GBA_BT_HID_FW_SP32_MULTIBOOT_H
+#ifndef MULTIBOOT_H
+#define MULTIBOOT_H
 
 #include <stdint.h>
 #include <driver/spi_master.h>
@@ -16,6 +12,6 @@ void initSPI();
 uint32_t send(uint32_t command);
 
 void multiboot(uint8_t* data, size_t len);
-void multiboot(const char* path, size_t len);
+void multiboot(File &file, size_t len);
 
-#endif //GBA_BT_HID_FW_SP32_MULTIBOOT_H
+#endif

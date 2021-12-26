@@ -14,11 +14,9 @@
 #define FORMAT_SPIFFS_IF_FAILED true
 
 #include "multiboot.hpp"
-// #include <TelnetStream.h>
 
 #define LED_PIN 21
 
-uint8_t *data;
 size_t data_len = 0;
 
 uint8_t led_state = 0;
@@ -51,37 +49,27 @@ void handleFileUpload(){ // upload a new file to the Filing system
 
 		digitalWrite(LED_PIN, HIGH);
 
-		if (data)
-			free(data);
-		data = (uint8_t*)malloc(1);
 		data_len = 0;
-		// file = SPIFFS.open("/buffer.data", FILE_WRITE);
+		file = SPIFFS.open("/buffer.data", FILE_WRITE);
 
 	} else if (uploadfile.status == UPLOAD_FILE_WRITE) {
 		Serial.print("Write: ");
 		Serial.println(uploadfile.currentSize);
 
-		// digitalWrite(LED_PIN, (led_state>>3)&1);
-		// led_state++;
-
-		uint8_t* ptr_tmp = (uint8_t*)realloc(data, data_len + uploadfile.currentSize);
-		data = ptr_tmp;
-		memcpy(data + data_len, uploadfile.buf, uploadfile.currentSize);
-
-		// file.write(uploadfile.buf, uploadfile.currentSize);
+		file.write(uploadfile.buf, uploadfile.currentSize);
 
 		data_len += uploadfile.currentSize;
 	}
 	else if (uploadfile.status == UPLOAD_FILE_END) {
 		Serial.print("END: ");
 		Serial.println(data_len);
-
-		multiboot(data, data_len);
-
-		// file.close();
-		// multiboot("/buffer.data", data_len);
-
 		digitalWrite(LED_PIN, LOW);
+
+		file.close();
+
+		File file = SPIFFS.open("/buffer.data", FILE_READ);
+		multiboot(file, data_len);
+		file.close();
 
 		webpage = "";
 		webpage += FPSTR(HTTP_STYLE);
@@ -140,10 +128,13 @@ void setup() {
 	else
 		ESP.restart();
 	Serial.print("IP: "); Serial.println(WiFi.localIP());
-	// TelnetStream.begin();
 
 	Serial.print("Setup task running on: ");
 	Serial.println(xPortGetCoreID());
+
+	digitalWrite(LED_PIN, HIGH);
+	delay(500);
+	digitalWrite(LED_PIN, LOW);
 }
 
 unsigned long next_frame = 0;

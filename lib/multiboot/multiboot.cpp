@@ -7,9 +7,7 @@
 #include <driver/spi_master.h>
 #include <driver/gpio.h>
 #include <string.h>
-
-#include "FS.h"
-#include "SPIFFS.h"
+#include <multiboot.hpp>
 
 #define PIN_NUM_MISO 25
 #define PIN_NUM_MOSI 32
@@ -54,7 +52,7 @@ void initSPI() {
 
     spi_device_interface_config_t devcfg;
     bzero(&devcfg, sizeof(devcfg));
-    devcfg.clock_speed_hz=5 * 100 * 1000,           //Clock out at 500 Khz
+    devcfg.clock_speed_hz=5 * 100 * 1000,         //Clock out at 500 Khz
     devcfg.mode=3,                                //SPI mode 3
     devcfg.spics_io_num=PIN_NUM_CS,               //CS pin
     devcfg.queue_size=7,                          //We want to be able to queue 7 transactions at a time
@@ -257,7 +255,7 @@ void multiboot(uint8_t *data, size_t len) {
 
 
 
-void multiboot(const char *path, size_t len) {
+void multiboot(File &file, size_t len) {
     initSPI();
 
     long romLength = len;
@@ -314,17 +312,24 @@ void multiboot(const char *path, size_t len) {
     uint32_t bytes_sent = 0;
     uint32_t w, w2, bitt;
     int i = sizeof(gba_header);
+    file.seek(sizeof(gba_header));
 
-    printf("Sending ROM\n");
-    File file = SPIFFS.open(path, FILE_READ);
     while (fcnt < rom_size) {
         if (bytes_sent == 32) {
             bytes_sent = 0;
         }
         
-        uint8_t data[4];
-        file.read(data, 4);
-        w = data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24);
+        int data_0 = file.read();
+        data_0 = (data_0 == -1 ? 0 : data_0);
+        int data_1 = file.read();
+        data_1 = (data_1 == -1 ? 0 : data_1);
+        int data_2 = file.read();
+        data_2 = (data_2 == -1 ? 0 : data_2);
+        int data_3 = file.read();
+        data_3 = (data_3 == -1 ? 0 : data_3);
+
+        // TelnetStream.printf("[%d] 0x%02x\n", i, data[0]);
+        w = data_0 | (data_1 << 8) | (data_2 << 16) | (data_3 << 24);
 
         i = i + 4;
         bytes_sent += 4;
