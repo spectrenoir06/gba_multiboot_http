@@ -13,16 +13,20 @@
 #include "SPIFFS.h"
 #define FORMAT_SPIFFS_IF_FAILED true
 
+#include "multiboot.hpp"
+// #include <TelnetStream.h>
 
-extern "C" {
-    #include "multiboot.h"
-}
+#define LED_PIN 21
 
 uint8_t *data;
 size_t data_len = 0;
 
+uint8_t led_state = 0;
+
 WiFiClient wiFiClient;
 WiFiManager	wifiManager;
+
+File file;
 
 void File_Upload() {
 	String webpage = "";
@@ -40,28 +44,45 @@ void handleFileUpload(){ // upload a new file to the Filing system
 	String webpage = "";
 	HTTPUpload& uploadfile = wifiManager.server->upload();
 	if(uploadfile.status == UPLOAD_FILE_START) {
-		Serial.print("Upload File Name: "); Serial.println(uploadfile.filename);
-		Serial.print("type: "); Serial.println(uploadfile.type);
+		Serial.print("Upload File Name: ");
+		Serial.println(uploadfile.filename);
+		Serial.print("type: ");
+		Serial.println(uploadfile.type);
 
-		#ifdef USE_LED
-			digitalWrite(led, HIGH);
-		#endif
+		digitalWrite(LED_PIN, HIGH);
 
 		if (data)
 			free(data);
 		data = (uint8_t*)malloc(1);
 		data_len = 0;
+		// file = SPIFFS.open("/buffer.data", FILE_WRITE);
 
 	} else if (uploadfile.status == UPLOAD_FILE_WRITE) {
-		Serial.print("Write: "); Serial.println(uploadfile.currentSize);
+		Serial.print("Write: ");
+		Serial.println(uploadfile.currentSize);
+
+		// digitalWrite(LED_PIN, (led_state>>3)&1);
+		// led_state++;
+
 		uint8_t* ptr_tmp = (uint8_t*)realloc(data, data_len + uploadfile.currentSize);
 		data = ptr_tmp;
 		memcpy(data + data_len, uploadfile.buf, uploadfile.currentSize);
+
+		// file.write(uploadfile.buf, uploadfile.currentSize);
+
 		data_len += uploadfile.currentSize;
 	}
 	else if (uploadfile.status == UPLOAD_FILE_END) {
-		Serial.print("END: "); Serial.println(data_len);
+		Serial.print("END: ");
+		Serial.println(data_len);
+
 		multiboot(data, data_len);
+
+		// file.close();
+		// multiboot("/buffer.data", data_len);
+
+		digitalWrite(LED_PIN, LOW);
+
 		webpage = "";
 		webpage += FPSTR(HTTP_STYLE);
 		webpage += F("<body class='invert'><div class='wrap'>");
@@ -76,11 +97,16 @@ void handleFileUpload(){ // upload a new file to the Filing system
 void setup() {
 
 	Serial.begin(115200);
-	pinMode(21, OUTPUT);
-	digitalWrite(21, 1);
+	pinMode(LED_PIN, OUTPUT);
+	digitalWrite(LED_PIN, LOW);
 	WiFi.setTxPower(WIFI_POWER_MINUS_1dBm);
 
 	WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
+
+	if (!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)) {
+		Serial.println("SPIFFS Mount Failed");
+		return;
+	}
 
 	#ifdef BOARD_HAS_PSRAM
 		Serial.printf("esp32 use external RAM\n");
@@ -114,6 +140,7 @@ void setup() {
 	else
 		ESP.restart();
 	Serial.print("IP: "); Serial.println(WiFi.localIP());
+	// TelnetStream.begin();
 
 	Serial.print("Setup task running on: ");
 	Serial.println(xPortGetCoreID());

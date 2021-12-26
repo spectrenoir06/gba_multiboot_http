@@ -7,12 +7,15 @@
 
 #include <stdint.h>
 #include <driver/spi_master.h>
-// #include "gba_rom.h"
+
+#include "FS.h"
+#include "SPIFFS.h"
 
 void initSPI();
 
 uint32_t send(uint32_t command);
 
 void multiboot(uint8_t* data, size_t len);
+void multiboot(const char* path, size_t len);
 
 #endif //GBA_BT_HID_FW_SP32_MULTIBOOT_H
