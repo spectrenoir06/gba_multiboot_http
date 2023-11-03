@@ -15,16 +15,17 @@
 
 #include "multiboot.hpp"
 
-#define LED_PIN 21
+#define OE_PIN 27
 
-size_t data_len = 0;
+#include "FastLED.h"
+CRGB leds[1];
+CRGB LED_color = CRGB::Red;
+int	 LED_delay = 200;
 
-uint8_t led_state = 0;
-
-WiFiClient wiFiClient;
+WiFiClient  wiFiClient;
 WiFiManager	wifiManager;
-
-File file;
+size_t      data_len = 0;
+File        file;
 
 void File_Upload() {
 	String webpage = "";
@@ -38,7 +39,7 @@ void File_Upload() {
 	wifiManager.server->send(200, "text/html", webpage);
 }
 
-void handleFileUpload(){ // upload a new file to the Filing system
+void handleFileUpload() { // upload a new file to the Filing system
 	String webpage = "";
 	HTTPUpload& uploadfile = wifiManager.server->upload();
 	if(uploadfile.status == UPLOAD_FILE_START) {
@@ -47,10 +48,11 @@ void handleFileUpload(){ // upload a new file to the Filing system
 		Serial.print("type: ");
 		Serial.println(uploadfile.type);
 
-		digitalWrite(LED_PIN, HIGH);
-
 		data_len = 0;
 		file = SPIFFS.open("/buffer.data", FILE_WRITE);
+
+		LED_color = CRGB::Orange;
+		LED_delay = 50;
 
 	} else if (uploadfile.status == UPLOAD_FILE_WRITE) {
 		Serial.print("Write: ");
@@ -63,12 +65,7 @@ void handleFileUpload(){ // upload a new file to the Filing system
 	else if (uploadfile.status == UPLOAD_FILE_END) {
 		Serial.print("END: ");
 		Serial.println(data_len);
-		digitalWrite(LED_PIN, LOW);
 
-		file.close();
-
-		File file = SPIFFS.open("/buffer.data", FILE_READ);
-		multiboot(file, data_len);
 		file.close();
 
 		webpage = "";
@@ -79,17 +76,60 @@ void handleFileUpload(){ // upload a new file to the Filing system
 		webpage += F("<a href='/upload'>[Back]</a><br><br>");
 		webpage += F("</div'></body'>");
 		wifiManager.server->send(200,"text/html", webpage);
+
+		File file = SPIFFS.open("/buffer.data", FILE_READ);
+		
+		LED_color = CRGB::Blue;
+		LED_delay = 200;
+
+		esp_wifi_stop();
+
+		multiboot(file, data_len);
+		file.close();
+
+		LED_color = CRGB::Green;
+		LED_delay = 100;
+
+		delay(1000);
+
+		LED_color = CRGB::Black;
+		LED_delay = 200;
+		esp_deep_sleep_start();
 	}
 }
 
+void taskLED(void * parameter) {
+	Serial.println("Start task LED");
+	while(true){
+		leds[0] = LED_color;
+		FastLED.show();
+		vTaskDelay(LED_delay / portTICK_PERIOD_MS);
+		leds[0] = CRGB::Black;
+		FastLED.show();
+		vTaskDelay(LED_delay / portTICK_PERIOD_MS);
+	}
+	Serial.println("Ending task LED");
+	vTaskDelete(NULL);
+}
+
 void setup() {
-
-	Serial.begin(115200);
-	pinMode(LED_PIN, OUTPUT);
-	digitalWrite(LED_PIN, LOW);
-	WiFi.setTxPower(WIFI_POWER_MINUS_1dBm);
-
+	setCpuFrequencyMhz(80);                    //Force CPU Frequency again to 80MHz instead the default 240MHz. 
 	WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
+	Serial.begin(115200);
+	FastLED.addLeds<NEOPIXEL, 21>(leds, 1);    // GRB ordering is assumed
+
+	LEDS.setBrightness(25);
+
+	xTaskCreate(
+		taskLED,          /* Task function. */
+		"taskLED",        /* String with name of task. */
+		10000,            /* Stack size in bytes. */
+		NULL,             /* Parameter passed as input of the task */
+		1,                /* Priority of the task. */
+		NULL              /* Task handle. */
+	);
+
+	WiFi.setTxPower(WIFI_POWER_MINUS_1dBm);
 
 	if (!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)) {
 		Serial.println("SPIFFS Mount Failed");
@@ -132,12 +172,11 @@ void setup() {
 	Serial.print("Setup task running on: ");
 	Serial.println(xPortGetCoreID());
 
-	digitalWrite(LED_PIN, HIGH);
-	delay(500);
-	digitalWrite(LED_PIN, LOW);
-}
+	pinMode(OE_PIN, OUTPUT);
+	digitalWrite(OE_PIN, HIGH);
 
-unsigned long next_frame = 0;
+	delay(500);
+}
 
 void loop() {
 	wifiManager.process();
