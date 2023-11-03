@@ -114,7 +114,7 @@ void taskLED(void * parameter) {
 
 void setup() {
 	setCpuFrequencyMhz(80);                    //Force CPU Frequency again to 80MHz instead the default 240MHz. 
-	WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
+	// WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
 	Serial.begin(115200);
 	FastLED.addLeds<NEOPIXEL, 21>(leds, 1);    // GRB ordering is assumed
 
